@@ -8,6 +8,7 @@ from .general_utils import get_deforum_version
 from .ui_left import setup_deforum_left_side_ui
 from scripts.deforum_extend_paths import deforum_sys_extend
 import gradio as gr
+import os
 
 def on_ui_tabs():
     # extend paths using sys.path.extend so we can access all of our files and folders
@@ -49,7 +50,7 @@ def on_ui_tabs():
                             close_btn: gr.update(visible=False),
                             btn: gr.update(value="Click here after the generation to show the video", visible=True),
                         }
-                    
+
                     close_btn.click(
                         fn=close_vid,
                         inputs=[],
@@ -72,10 +73,13 @@ def on_ui_tabs():
                         inputs=[],
                         outputs=[],
                     )
-                
+
                 deforum_gallery, generation_info, html_info, _ = create_output_panel("deforum", opts.outdir_img2img_samples)
+                # get all files that starts with 'deforum_setting' in the current directory
+                files = [f for f in os.listdir('.') if os.path.isfile(f) and f.startswith('deforum_setting')]
 
                 with gr.Row(variant='compact'):
+                    settings_dropdown = gr.Dropdown(choices=files, default='deforum_settings.txt', label="Settings Files", elem_id='deforum_settings_dropdown')
                     settings_path = gr.Textbox("deforum_settings.txt", elem_id='deforum_settings_path', label="Settings File", info="settings file path can be relative to webui folder OR full - absolute")
                 with gr.Row(variant='compact'):
                     save_settings_btn = gr.Button('Save Settings', elem_id='deforum_save_settings_btn')
@@ -92,10 +96,10 @@ def on_ui_tabs():
                          deforum_gallery,
                          components["resume_timestring"],
                          generation_info,
-                         html_info                 
+                         html_info
                     ],
                 )
-        
+
         settings_component_list = [components[name] for name in get_settings_component_names()]
         video_settings_component_list = [components[name] for name in list(DeforumOutputArgs().keys())]
 
@@ -104,7 +108,7 @@ def on_ui_tabs():
             inputs=[settings_path] + settings_component_list + video_settings_component_list,
             outputs=[],
         )
-        
+
         load_settings_btn.click(
             fn=wrap_gradio_call(lambda *args, **kwargs: load_all_settings(*args, ui_launch=False, **kwargs)),
             inputs=[settings_path] + settings_component_list,
@@ -116,7 +120,7 @@ def on_ui_tabs():
             inputs=[settings_path] + video_settings_component_list,
             outputs=video_settings_component_list,
         )
-        
+
     # handle persistent settings - load the persistent file upon UI launch
     def trigger_load_general_settings():
         print("Loading general settings...")
@@ -130,5 +134,5 @@ def on_ui_tabs():
     # actually check persistent setting status
     if opts.data.get("deforum_enable_persistent_settings", False):
         trigger_load_general_settings()
-        
+
     return [(deforum_interface, "Deforum", "deforum_interface")]

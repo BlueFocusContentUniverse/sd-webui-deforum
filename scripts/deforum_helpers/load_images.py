@@ -4,6 +4,7 @@ from PIL import Image
 import socket
 import torchvision.transforms.functional as TF
 from .general_utils import clean_gradio_path_strings
+import logging
 
 def load_img(path : str, shape=None, use_alpha_as_mask=False):
     # use_alpha_as_mask: Read the alpha channel of the image as the mask image
@@ -17,7 +18,7 @@ def load_img(path : str, shape=None, use_alpha_as_mask=False):
         red, green, blue, alpha = Image.Image.split(image) # not interested in R G or B, just in the alpha channel
         mask_image = alpha.convert('L')
         image = image.convert('RGB')
-        
+
         # check using init image alpha as mask if mask is not blank
         extrema = mask_image.getextrema()
         if (extrema == (0,0)) or extrema == (255,255):
@@ -30,15 +31,19 @@ def load_img(path : str, shape=None, use_alpha_as_mask=False):
 def load_image(image_path :str):
     image_path = clean_gradio_path_strings(image_path)
     image = None
+    logging.info(f"图片地址：{image_path}")
     if image_path.startswith('http://') or image_path.startswith('https://'):
         try:
-            host = socket.gethostbyname("www.google.com")
+            host = socket.gethostbyname("www.baidu.com")
             s = socket.create_connection((host, 80), 2)
             s.close()
         except:
             raise ConnectionError("There is no active internet connection available (couldn't connect to google.com as a network test) - please use *local* masks and init files only.")
         try:
-            response = requests.get(image_path, stream=True)
+            proxies = {
+            'http': 'http://localhost:1081',
+            }
+            response = requests.get(image_path, stream=True, proxies=proxies)
         except requests.exceptions.RequestException as e:
             raise ConnectionError("Failed to download image due to no internet connection. Error: {}".format(e))
         if response.status_code == 404 or response.status_code != 200:
@@ -48,7 +53,7 @@ def load_image(image_path :str):
         if not os.path.exists(image_path):
             raise RuntimeError("Init image path or mask image path is not valid")
         image = Image.open(image_path).convert('RGB')
-        
+
     return image
 
 def prepare_mask(mask_input, mask_shape, mask_brightness_adjust=1.0, mask_contrast_adjust=1.0):
@@ -74,15 +79,15 @@ def prepare_mask(mask_input, mask_shape, mask_brightness_adjust=1.0, mask_contra
 def check_mask_for_errors(mask_input, invert_mask=False):
     extrema = mask_input.getextrema()
     if (invert_mask):
-        if extrema == (255,255): 
-            print("after inverting mask will be blank. ignoring mask")  
+        if extrema == (255,255):
+            print("after inverting mask will be blank. ignoring mask")
             return None
-    elif extrema == (0,0): 
-        print("mask is blank. ignoring mask")  
+    elif extrema == (0,0):
+        print("mask is blank. ignoring mask")
         return None
     else:
-        return mask_input    
- 
+        return mask_input
+
 def get_mask(args):
     return prepare_mask(args.mask_file, (args.W, args.H), args.mask_contrast_adjust, args.mask_brightness_adjust)
 

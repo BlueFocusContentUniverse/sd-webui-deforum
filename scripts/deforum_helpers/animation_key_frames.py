@@ -117,13 +117,15 @@ class FrameInterpolater():
         return key_frame_series
 
     def parse_key_frames(self, string):
-        # because math functions (i.e. sin(t)) can utilize brackets 
+        # because math functions (i.e. sin(t)) can utilize brackets
         # it extracts the value in form of some stuff
         # which has previously been enclosed with brackets and
         # with a comma or end of line existing after the closing one
         frames = dict()
         for match_object in string.split(","):
             frameParam = match_object.split(":")
+            if len(frameParam) < 2:
+                raise ValueError(f"Invalid frame parameter pair: {match_object}")
             max_f = self.max_frames -1
             s = self.seed
             frame = int(self.sanitize_value(frameParam[0])) if check_is_number(self.sanitize_value(frameParam[0].strip())) else int(numexpr.evaluate(frameParam[0].strip().replace("'","",1).replace('"',"",1)[::-1].replace("'","",1).replace('"',"",1)[::-1]))
