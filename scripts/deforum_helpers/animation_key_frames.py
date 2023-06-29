@@ -87,30 +87,36 @@ class FrameInterpolater():
 
     def get_inbetweens(self, key_frames, integer=False, interp_method='Linear', is_single_string = False):
         key_frame_series = pd.Series([np.nan for a in range(self.max_frames)])
-        # get our ui variables set for numexpr.evaluate
-        max_f = self.max_frames -1
+        max_f = self.max_frames - 1
         s = self.seed
+        value_is_number = False
+        value = None
         for i in range(0, self.max_frames):
             if i in key_frames:
                 value = key_frames[i]
                 value_is_number = check_is_number(self.sanitize_value(value))
-                if value_is_number: # if it's only a number, leave the rest for the default interpolation
+                if value_is_number:
                     key_frame_series[i] = self.sanitize_value(value)
             if not value_is_number:
                 t = i
-                # workaround for values formatted like 0:("I am test") //used for sampler schedules
-                key_frame_series[i] = numexpr.evaluate(value) if not is_single_string else self.sanitize_value(value)
-            elif is_single_string:# take previous string value and replicate it
+                if isinstance(value, str):
+                    key_frame_series[i] = numexpr.evaluate(value) if not is_single_string else self.sanitize_value(value)
+            elif is_single_string and i > 0:
                 key_frame_series[i] = key_frame_series[i-1]
-        key_frame_series = key_frame_series.astype(float) if not is_single_string else key_frame_series # as string
+        key_frame_series = key_frame_series.astype(float) if not is_single_string else key_frame_series
 
-        if interp_method == 'Cubic' and len(key_frames.items()) <= 3:
+        if interp_method == 'Cubic' and len(key_frames) <= 3:
             interp_method = 'Quadratic'
-        if interp_method == 'Quadratic' and len(key_frames.items()) <= 2:
+        if interp_method == 'Quadratic' and len(key_frames) <= 2:
             interp_method = 'Linear'
 
-        key_frame_series[0] = key_frame_series[key_frame_series.first_valid_index()]
-        key_frame_series[self.max_frames-1] = key_frame_series[key_frame_series.last_valid_index()]
+        first_valid = key_frame_series.first_valid_index()
+        if first_valid is not None:
+            key_frame_series[0] = key_frame_series[first_valid]
+
+        last_valid = key_frame_series.last_valid_index()
+        if last_valid is not None:
+            key_frame_series[self.max_frames-1] = key_frame_series[last_valid]
         key_frame_series = key_frame_series.interpolate(method=interp_method.lower(), limit_direction='both')
         if integer:
             return key_frame_series.astype(int)

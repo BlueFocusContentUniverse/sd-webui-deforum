@@ -11,3 +11,5 @@ cc-outputs.log
 *.safetensors
 scripts/deforum_helpers/navigation.py
 webui-user.sh
+scripts/deforum_helpers/animation_key_frames.py
+huize+BEN/*
